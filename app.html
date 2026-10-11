@@ -1,1 +1,730 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Book Manager">
+<meta name="theme-color" content="#2563eb">
+<title>Book Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8;--card:#fff;--text:#1b1f27;--muted:#6b7280;--line:#e3e6eb;
+  --pri:#2563eb;--pri-t:#fff;--danger:#dc2626;--warn:#b45309;--warn-bg:#fef3c7;--row-h:#f0f5ff;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1115;--card:#181b22;--text:#e8eaee;--muted:#98a1b0;--line:#2a2f3a;
+    --pri:#3b82f6;--danger:#f87171;--warn:#fbbf24;--warn-bg:#3a2e0e;--row-h:#1d2433;}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px}
+button:active{opacity:.7}
+button.primary{background:var(--pri);color:var(--pri-t);border-color:var(--pri);font-weight:600}
+button.danger{color:var(--danger)}
+input,select,textarea{font-size:16px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pri);outline-offset:-1px}
+[hidden]{display:none!important}
 
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));
+  padding-left:calc(12px + env(safe-area-inset-left));padding-right:calc(12px + env(safe-area-inset-right))}
+.title{flex:1;min-width:0;font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dot{color:var(--warn);margin-left:6px;font-size:14px}
+main{max-width:900px;margin:0 auto;padding:12px;padding-bottom:calc(40px + env(safe-area-inset-bottom));
+  padding-left:calc(12px + env(safe-area-inset-left));padding-right:calc(12px + env(safe-area-inset-right))}
+.bar{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.bar select{flex:1;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+details.card>summary{cursor:pointer;font-weight:600;list-style:none}
+details.card>summary::-webkit-details-marker{display:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.grid label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+@media (max-width:520px){.grid{grid-template-columns:1fr}}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.warn{background:var(--warn-bg);color:var(--warn);padding:8px 10px;border-radius:10px;margin:10px 0;font-size:14px}
+.count{font-size:13px;color:var(--muted);font-weight:400;margin-left:4px}
+.tgl{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:transparent;
+  padding:2px 0;font-size:15px;font-weight:600;text-align:left;border-radius:8px}
+.tgl .chev{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;
+  border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);transition:transform .15s}
+.tgl.closed .chev{transform:rotate(-90deg)}
+.list-tgl{margin:0 0 8px}
+#addBody{margin-top:6px}
+.dlg.wide{max-width:680px;height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.srch{display:flex;gap:8px}
+.srch input{flex:1}
+.dlg .count{margin:8px 2px 0}
+.res{flex:1;min-height:0;overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:12px}
+.res th{top:0}
+.srchinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+.dlg .chk{display:flex;align-items:center;gap:6px;margin:0;font-size:14px;color:var(--text);cursor:pointer}
+.dlg .chk input{width:auto;margin:0}
+.dlg .srchinfo .count{margin:0}
+
+.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.tablewrap th:first-child{border-top-left-radius:13px}
+.tablewrap th:last-child{border-top-right-radius:13px}
+.tablewrap tr:last-child td:first-child{border-bottom-left-radius:13px}
+.tablewrap tr:last-child td:last-child{border-bottom-right-radius:13px}
+td input,td select{scroll-margin-top:calc(var(--hh,52px) + 48px);scroll-margin-bottom:24px}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left;padding:8px 6px;
+  background:var(--bg);border-bottom:1px solid var(--line);position:sticky;top:var(--hh,52px);z-index:5}
+td{padding:2px 4px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--row-h)}
+td input,td select{border:1px solid transparent;background:transparent;padding:8px 6px;border-radius:8px}
+td input:focus,td select:focus{background:var(--card);border-color:var(--pri)}
+.c-stt{width:72px}.c-stt input{text-align:center;font-variant-numeric:tabular-nums}
+.c-del{width:40px;text-align:center}
+.c-del button{border:0;background:transparent;color:var(--muted);padding:6px 8px}
+.empty{text-align:center;color:var(--muted);padding:24px!important}
+
+#welcome{text-align:center;padding:40px 8px}
+#welcome h1{margin:0 0 6px}
+#welcome p{color:var(--muted);margin:0 0 24px}
+#welcome .btns{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto}
+#welcome .btns button{padding:14px}
+
+#modal .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:600px){#modal .ov{align-items:center}}
+.dlg{background:var(--card);width:100%;max-width:480px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;
+  padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+@media (min-width:600px){.dlg{border-radius:18px}}
+.dlg h3{margin:0 0 12px}
+.dlg label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+.dlg .row{display:flex;gap:8px;margin-top:14px}
+.dlg .row button{flex:1}
+.dlg .list button{display:block;width:100%;text-align:left;margin-bottom:8px}
+.dlg textarea{min-height:120px;resize:vertical}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:#111;color:#fff;padding:10px 16px;border-radius:12px;z-index:60;max-width:90vw;opacity:0;pointer-events:none;
+  transition:opacity .2s;font-size:14px;text-align:center}
+#toast.on{opacity:1}#toast.err{background:var(--danger)}
+</style>
+</head>
+<body>
+<header>
+  <div class="title"><span id="fname">Book Manager</span><span id="dot" hidden title="Có thay đổi chưa lưu">●</span></div>
+  <button id="btnSave" class="primary" hidden>💾 Lưu</button>
+  <button id="btnMenu" aria-label="Menu">☰</button>
+</header>
+
+<main>
+  <section id="welcome">
+    <h1>📚 Book Manager</h1>
+    <p>Mở file .xlsx / .csv để bắt đầu, hoặc tạo file mới.</p>
+    <div class="btns">
+      <button class="primary" data-act="open">📂 Mở file từ máy</button>
+      <button data-act="ghopen">☁️ Mở từ GitHub</button>
+      <button data-act="new">🆕 Tạo file mới</button>
+    </div>
+    <p class="hint" style="margin-top:28px">iPhone: Safari → nút Chia sẻ → “Thêm vào MH chính” để dùng như app.</p>
+  </section>
+
+  <section id="ws" hidden>
+    <div class="bar">
+      <select id="selSheet" aria-label="Chọn sheet"></select>
+      <button id="btnAddSheet">＋ Sheet</button>
+      <button id="btnSheetCfg" title="Cài đặt sheet (Status, Prefix, đổi tên, xoá)">⚙️</button>
+    </div>
+
+    <div id="noSheet" class="card" hidden>File chưa có sheet nào. Bấm “＋ Sheet” để tạo.</div>
+
+    <div id="sheetBody">
+      <div class="bar"><input id="q" type="search" placeholder="🔍 Tìm theo STT, Item, Status…" autocomplete="off" readonly></div>
+
+      <section class="card" id="addCard">
+        <button class="tgl" data-toggle="add" aria-expanded="true"><span class="ttl">＋ Thêm item</span><span class="chev" aria-hidden="true">▾</span></button>
+        <div id="addBody">
+        <div id="noStatusWarn" class="warn" hidden>
+          Sheet này chưa có danh sách Status. <a href="#" id="lnkCfg">Tạo danh sách Status</a> trước khi thêm item.
+        </div>
+        <div class="grid">
+          <label>STT <input id="aStt" inputmode="text" autocomplete="off" placeholder="vd: 7 hoặc 1-5, 10, 12-15"></label>
+          <label>Item <input id="aItem" autocomplete="off" placeholder="Trống = Prefix_STT"></label>
+          <label>Status <select id="aStatus"></select></label>
+          <label>Prefix (của sheet này) <input id="aPrefix" autocomplete="off" placeholder="vd: Doremon"></label>
+        </div>
+        <button id="btnAdd" class="primary">Thêm</button>
+        <p class="hint">Nhập dải như <b>1-5</b> hoặc <b>1,2,3,10-12</b> để thêm nhiều hàng cùng lúc: Item sẽ là <i>Prefix_1…Prefix_5</i>, cùng Status đã chọn. STT đã tồn tại sẽ bị bỏ qua. Bảng luôn tự xếp theo STT tăng dần.</p>
+        </div>
+      </section>
+
+      <button class="tgl list-tgl" data-toggle="list" aria-expanded="true"><span class="ttl">Danh sách <span class="count" id="count"></span></span><span class="chev" aria-hidden="true">▾</span></button>
+      <div class="tablewrap" id="listBody">
+        <table>
+          <thead><tr><th class="c-stt">STT</th><th>Item</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+<div id="toast"></div>
+<div id="modal"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+/* ---------- state ---------- */
+let book = null;      // {name, ext, sheets:{name:{prefix,statuses,rows:[{stt,item,status}]}}, order:[], source}
+let cur = null;       // current sheet name
+let dirty = false;
+let q = '';
+let lastStatus = '';
+let exact = false;   // tìm kiếm khớp chính xác
+
+const curSheet = () => (book && cur) ? book.sheets[cur] : null;
+const sortRows = sh => sh.rows.sort((a, b) => a.stt - b.stt);
+const nextStt = sh => sh.rows.reduce((m, r) => Math.max(m, r.stt), 0) + 1;
+function setDirty(v = true) { dirty = v; $('#dot').hidden = !v; }
+
+let toastT;
+function toast(msg, err = false) {
+  const t = $('#toast'); t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = '', err ? 4500 : 2200);
+}
+
+/* ---------- modal ---------- */
+function modal(html) {
+  const m = $('#modal');
+  m.innerHTML = `<div class="ov"><div class="dlg">${html}</div></div>`;
+  m.querySelector('.ov').addEventListener('mousedown', e => { if (e.target.classList.contains('ov')) closeModal(); });
+  return m.querySelector('.dlg');
+}
+function closeModal() {
+  $('#modal').innerHTML = '';
+  $('#q').value = q;
+  if (book && curSheet()) renderTable();
+}
+
+/* ---------- parse / serialize ---------- */
+function newSheet() { return { prefix: '', statuses: [], rows: [] }; }
+
+function wbToBook(wb, name, ext) {
+  const b = { name, ext, sheets: {}, order: [], source: { type: 'local' } };
+  const meta = {};
+  if (wb.Sheets['_meta']) {
+    XLSX.utils.sheet_to_json(wb.Sheets['_meta'], { header: 1, defval: '' }).forEach((r, i) => {
+      if (i === 0 && String(r[0]).toLowerCase() === 'sheet') return;
+      if (r[0] !== '') meta[String(r[0])] = {
+        prefix: String(r[1] ?? ''),
+        statuses: String(r[2] ?? '').split('|').map(s => s.trim()).filter(Boolean)
+      };
+    });
+  }
+  wb.SheetNames.forEach(n => {
+    if (n === '_meta') return;
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '' });
+    const sh = newSheet();
+    const m = meta[n];
+    if (m) { sh.prefix = m.prefix; sh.statuses = [...m.statuses]; }
+    let start = 0;
+    if (aoa.length && String(aoa[0][0]).trim().toLowerCase() === 'stt') start = 1;
+    const used = new Set(), pending = [];
+    for (let i = start; i < aoa.length; i++) {
+      const r = aoa[i];
+      const item = String(r[1] ?? '').trim(), status = String(r[2] ?? '').trim();
+      const stt = parseInt(r[0], 10);
+      if (!item && !status && isNaN(stt)) continue;
+      if (!isNaN(stt) && stt > 0 && !used.has(stt)) { used.add(stt); sh.rows.push({ stt, item, status }); }
+      else pending.push({ item, status });
+    }
+    let mx = 0; used.forEach(v => { if (v > mx) mx = v; });
+    pending.forEach(p => sh.rows.push({ stt: ++mx, ...p }));
+    sh.rows.forEach(r => { if (r.status && !sh.statuses.includes(r.status)) sh.statuses.push(r.status); });
+    sortRows(sh);
+    const key = ext === 'csv' ? name.slice(0, 31) : n;
+    b.sheets[key] = sh; b.order.push(key);
+  });
+  return b;
+}
+
+function sheetAoa(sh) {
+  return [['STT', 'Item', 'Status'], ...sh.rows.map(r => [r.stt, r.item, r.status])];
+}
+function toWorkbook() {
+  const wb = XLSX.utils.book_new();
+  book.order.forEach(n => {
+    const ws = XLSX.utils.aoa_to_sheet(sheetAoa(book.sheets[n]));
+    ws['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws, n);
+  });
+  const meta = [['Sheet', 'Prefix', 'Statuses'], ...book.order.map(n => [n, book.sheets[n].prefix, book.sheets[n].statuses.join('|')])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), '_meta');
+  wb.Workbook = { Sheets: wb.SheetNames.map(n => ({ Hidden: n === '_meta' ? 1 : 0 })) };
+  return wb;
+}
+function serialize() {
+  if (book.ext === 'csv') {
+    const ws = XLSX.utils.aoa_to_sheet(sheetAoa(curSheet() || newSheet()));
+    return new TextEncoder().encode('\ufeff' + XLSX.utils.sheet_to_csv(ws));
+  }
+  return new Uint8Array(XLSX.write(toWorkbook(), { bookType: 'xlsx', type: 'array' }));
+}
+const mime = () => book.ext === 'csv' ? 'text/csv;charset=utf-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function loadBuffer(buf, filename, source) {
+  if (typeof XLSX === 'undefined') { toast('Không tải được thư viện xlsx (cần mạng lần đầu)', true); return; }
+  if (dirty && !confirm('Có thay đổi chưa lưu. Bỏ qua và mở file khác?')) return;
+  const dot = filename.lastIndexOf('.');
+  const base = dot > 0 ? filename.slice(0, dot) : filename;
+  let ext = dot > 0 ? filename.slice(dot + 1).toLowerCase() : 'xlsx';
+  try {
+    let wb;
+    if (ext === 'csv') wb = XLSX.read(new TextDecoder('utf-8').decode(buf), { type: 'string' });
+    else { wb = XLSX.read(buf, { type: 'array' }); if (ext !== 'xlsx') { ext = 'xlsx'; source = { type: 'local' }; } }
+    book = wbToBook(wb, base, ext);
+    book.source = source || { type: 'local' };
+    cur = book.order[0] || null;
+    setDirty(false); q = ''; $('#q').value = '';
+    updateUI();
+    if (ext === 'csv') toast('CSV chỉ chứa 1 sheet. Muốn nhiều sheet hãy dùng .xlsx');
+  } catch (e) { toast('Không đọc được file: ' + e.message, true); }
+}
+
+/* ---------- open / new ---------- */
+async function openLocal() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: 'Excel / CSV', accept: {
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'text/csv': ['.csv'] } }] });
+      const f = await h.getFile();
+      await loadBuffer(await f.arrayBuffer(), f.name, { type: 'fs', handle: h });
+      return;
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  $('#file').click();
+}
+$('#file').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (f) await loadBuffer(await f.arrayBuffer(), f.name, { type: 'local' });
+});
+
+function newBook() {
+  if (dirty && !confirm('Có thay đổi chưa lưu. Bỏ qua và tạo file mới?')) return;
+  let name = prompt('Tên file (không cần đuôi):', 'list_book');
+  if (!name) return;
+  name = name.trim().replace(/[\\/:*?"<>|]/g, '_').replace(/\.(xlsx|csv)$/i, '');
+  if (!name) return;
+  book = { name, ext: 'xlsx', sheets: {}, order: [], source: { type: 'local' } };
+  cur = null; setDirty(true); updateUI();
+  addSheet();
+}
+
+/* ---------- sheets ---------- */
+function validSheetName(n, except) {
+  n = (n || '').trim();
+  if (!n) return 'Tên sheet không được trống';
+  if (n.length > 31) return 'Tên sheet tối đa 31 ký tự';
+  if (/[\[\]:*?\/\\]/.test(n)) return 'Tên sheet không được chứa [ ] : * ? / \\';
+  if (n.toLowerCase() === '_meta') return 'Tên _meta được dành riêng';
+  if (book.order.some(x => x !== except && x.toLowerCase() === n.toLowerCase())) return 'Tên sheet đã tồn tại';
+  return '';
+}
+function addSheet() {
+  if (!book) return;
+  const n = prompt('Tên sheet mới:', book.order.length ? '' : 'Sheet1');
+  if (n === null) return;
+  const err = validSheetName(n); if (err) { toast(err, true); return; }
+  const name = n.trim();
+  book.sheets[name] = newSheet(); book.order.push(name); cur = name;
+  setDirty(); updateUI();
+  openSheetCfg(true);
+}
+function openSheetCfg(isNew = false) {
+  const sh = curSheet(); if (!sh) return;
+  const d = modal(`
+    <h3>${isNew ? 'Thiết lập sheet mới' : 'Cài đặt sheet'}</h3>
+    <label>Tên sheet</label><input id="cName" value="${esc(cur)}">
+    <label>Prefix cho Item khi thêm nhanh</label><input id="cPrefix" value="${esc(sh.prefix)}" placeholder="vd: Doremon">
+    <label>Danh sách Status (mỗi dòng 1 status)</label>
+    <textarea id="cStatuses" placeholder="Có&#10;Có, cũ&#10;Chưa có">${esc(sh.statuses.join('\n'))}</textarea>
+    <div class="row"><button id="cDel" class="danger">Xoá sheet</button><button id="cOk" class="primary">Xong</button></div>`);
+  d.querySelector('#cOk').onclick = () => {
+    const nn = d.querySelector('#cName').value.trim();
+    const err = validSheetName(nn, cur); if (err) { toast(err, true); return; }
+    sh.prefix = d.querySelector('#cPrefix').value.trim();
+    const list = []; d.querySelector('#cStatuses').value.split('\n').map(s => s.trim()).filter(Boolean)
+      .forEach(s => { if (!list.includes(s)) list.push(s); });
+    sh.statuses = list;
+    if (nn !== cur) {
+      book.sheets[nn] = sh; delete book.sheets[cur];
+      book.order = book.order.map(x => x === cur ? nn : x); cur = nn;
+    }
+    setDirty(); closeModal(); updateUI();
+  };
+  d.querySelector('#cDel').onclick = () => {
+    if (!confirm(`Xoá sheet “${cur}” và toàn bộ ${sh.rows.length} item?`)) return;
+    delete book.sheets[cur]; book.order = book.order.filter(x => x !== cur);
+    cur = book.order[0] || null; setDirty(); closeModal(); updateUI();
+  };
+}
+
+/* ---------- render ---------- */
+function updateUI() {
+  $('#welcome').hidden = !!book; $('#ws').hidden = !book;
+  $('#fname').textContent = book ? book.name : 'Book Manager';
+  document.title = book ? book.name + ' – Book Manager' : 'Book Manager';
+  $('#btnSave').hidden = !book;
+  if (!book) return;
+  $('#selSheet').innerHTML = book.order.map(n => `<option value="${esc(n)}" ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('#selSheet').hidden = !book.order.length;
+  $('#btnSheetCfg').hidden = !book.order.length;
+  renderSheet();
+}
+function statusOptions(sh, val) {
+  let h = '<option value="">—</option>' + sh.statuses.map(s => `<option value="${esc(s)}" ${s === val ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  if (val && !sh.statuses.includes(val)) h += `<option value="${esc(val)}" selected>${esc(val)} (ngoài list)</option>`;
+  return h;
+}
+function renderSheet() {
+  const sh = curSheet();
+  $('#sheetBody').hidden = !sh; $('#noSheet').hidden = !!sh;
+  if (!sh) return;
+  $('#aPrefix').value = sh.prefix;
+  $('#noStatusWarn').hidden = sh.statuses.length > 0;
+  const keep = sh.statuses.includes(lastStatus) ? lastStatus : (sh.statuses[0] || '');
+  $('#aStatus').innerHTML = sh.statuses.map(s => `<option value="${esc(s)}" ${s === keep ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  resetAddDefaults();
+  renderTable();
+}
+function resetAddDefaults() { const sh = curSheet(); if (sh) $('#aStt').value = nextStt(sh); }
+function rowHtml(r, i, sh) {
+  return `<tr data-i="${i}"><td class="c-stt"><input class="e-stt" inputmode="numeric" value="${r.stt}"></td>` +
+    `<td><input class="e-item" value="${esc(r.item)}"></td>` +
+    `<td><select class="e-status">${statusOptions(sh, r.status)}</select></td>` +
+    `<td class="c-del"><button data-act="del" aria-label="Xoá">✕</button></td></tr>`;
+}
+function renderTable() {
+  const sh = curSheet(); if (!sh) return;
+  $('#tb').innerHTML = sh.rows.length ? sh.rows.map((r, i) => rowHtml(r, i, sh)).join('')
+    : '<tr><td colspan="4" class="empty">Chưa có item nào</td></tr>';
+  $('#count').textContent = `(${sh.rows.length})`;
+}
+
+/* ---------- editing (dùng chung cho bảng chính và popup tìm kiếm) ---------- */
+function bindRows(el, onResort) {
+  el.addEventListener('change', e => {
+    const tr = e.target.closest('tr[data-i]'); if (!tr) return;
+    const sh = curSheet(), r = sh.rows[+tr.dataset.i], c = e.target.classList;
+    if (c.contains('e-item')) { r.item = e.target.value.trim(); setDirty(); }
+    else if (c.contains('e-status')) { r.status = e.target.value; setDirty(); }
+    else if (c.contains('e-stt')) {
+      const v = parseInt(e.target.value, 10);
+      if (!(v > 0) || sh.rows.some(x => x !== r && x.stt === v)) { toast('STT phải là số nguyên dương và không trùng', true); e.target.value = r.stt; return; }
+      r.stt = v; sortRows(sh); setDirty(); onResort();
+    }
+  });
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-act="del"]'); if (!b) return;
+    const sh = curSheet(), i = +b.closest('tr').dataset.i, r = sh.rows[i];
+    if (!confirm(`Xoá STT ${r.stt} – ${r.item}?`)) return;
+    sh.rows.splice(i, 1); setDirty(); onResort();
+  });
+}
+bindRows($('#tb'), () => { renderTable(); resetAddDefaults(); });
+
+/* ---------- tìm kiếm (popup) ---------- */
+const TH = '<thead><tr><th class="c-stt">STT</th><th>Item</th><th>Status</th><th></th></tr></thead>';
+function openSearch() {
+  const sh = curSheet(); if (!sh || $('#modal').firstChild) return;
+  const d = modal(`<div class="srch"><input id="sq" type="search" placeholder="Tìm theo STT, Item, Status…" autocomplete="off" value="${esc(q)}"><button id="sx">Đóng</button></div>
+    <div class="srchinfo"><label class="chk"><input type="checkbox" id="sex" ${exact ? 'checked' : ''}> Khớp chính xác</label><span class="count" id="sc"></span></div>
+    <div class="res"><table>${TH}<tbody id="sb"></tbody></table></div>`);
+  d.classList.add('wide');
+  const inp = d.querySelector('#sq');
+  inp.focus(); inp.select();
+  inp.oninput = () => { q = inp.value; renderResults(); };
+  d.querySelector('#sx').onclick = closeModal;
+  d.querySelector('#sex').onchange = e => {
+    exact = e.target.checked; ui.exact = exact; saveUi(); renderResults(); inp.focus();
+  };
+  bindRows(d.querySelector('#sb'), () => { renderResults(); resetAddDefaults(); });
+  renderResults();
+}
+function renderResults() {
+  const sh = curSheet(), sb = $('#sb'); if (!sh || !sb) return;
+  const k = norm(q.trim()), MAX = 200;
+  let html = '', n = 0;
+  if (!k) { html = '<tr><td colspan="4" class="empty">Nhập từ khoá để tìm</td></tr>'; $('#sc').textContent = ''; }
+  else {
+    // chính xác: cả trường phải bằng từ khoá (không phân biệt hoa/thường, có phân biệt dấu); thường: chứa từ khoá, bỏ qua dấu
+    const kx = q.trim().toLowerCase();
+    const hit = exact
+      ? r => [String(r.stt), r.item, r.status].some(v => String(v).trim().toLowerCase() === kx)
+      : r => norm(r.stt).includes(k) || norm(r.item).includes(k) || norm(r.status).includes(k);
+    for (let i = 0; i < sh.rows.length; i++) {
+      const r = sh.rows[i];
+      if (!hit(r)) continue;
+      if (++n <= MAX) html += rowHtml(r, i, sh);
+    }
+    if (!n) html = '<tr><td colspan="4" class="empty">Không tìm thấy</td></tr>';
+    $('#sc').textContent = n > MAX ? `${n} kết quả (hiển thị ${MAX} đầu)` : `${n} kết quả`;
+  }
+  sb.innerHTML = html;
+}
+
+function parseStt(s) {
+  s = s.replace(/\s*([-–~:])\s*/g, '$1');
+  const out = new Set();
+  for (const tok of s.split(/[,;\s]+/).filter(Boolean)) {
+    const m = tok.match(/^(\d+)(?:[-–~:](\d+))?$/);
+    if (!m) return { err: `“${tok}” không hợp lệ` };
+    const a = +m[1], b = m[2] !== undefined ? +m[2] : a;
+    if (a < 1 || b < a) return { err: `Dải “${tok}” không hợp lệ` };
+    if (b - a > 5000) return { err: 'Dải quá lớn (tối đa 5000 hàng/lần)' };
+    for (let n = a; n <= b; n++) out.add(n);
+  }
+  if (!out.size) return { err: 'Chưa nhập STT' };
+  return { nums: [...out].sort((x, y) => x - y) };
+}
+function doAdd() {
+  const sh = curSheet(); if (!sh) return;
+  if (!sh.statuses.length) { toast('Sheet chưa có danh sách Status – hãy tạo trước', true); openSheetCfg(); return; }
+  const p = parseStt($('#aStt').value); if (p.err) { toast(p.err, true); return; }
+  const itemVal = $('#aItem').value.trim(), status = $('#aStatus').value;
+  const exist = new Set(sh.rows.map(r => r.stt)), multi = p.nums.length > 1, skip = [];
+  let added = 0;
+  for (const n of p.nums) {
+    if (exist.has(n)) { skip.push(n); continue; }
+    let item;
+    if (!multi && itemVal) item = itemVal;
+    else { const base = itemVal || sh.prefix; item = base ? base + '_' + n : String(n); }
+    sh.rows.push({ stt: n, item, status }); added++;
+  }
+  if (added) { sortRows(sh); setDirty(); lastStatus = status; }
+  $('#aItem').value = '';
+  renderTable(); resetAddDefaults();
+  const sk = skip.length ? ` · bỏ qua STT đã có: ${skip.slice(0, 10).join(',')}${skip.length > 10 ? '…' : ''}` : '';
+  toast(added ? `Đã thêm ${added} hàng${sk}` : `Không thêm được${sk}`, !added);
+}
+
+/* ---------- save ---------- */
+function download() {
+  const blob = new Blob([serialize()], { type: mime() });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = book.name + '.' + book.ext;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  setDirty(false); toast('Đã tải xuống ' + a.download);
+}
+async function writeFS(h) {
+  const w = await h.createWritable();
+  await w.write(new Blob([serialize()], { type: mime() })); await w.close();
+}
+async function saveAs() {
+  try {
+    const h = await showSaveFilePicker({ suggestedName: book.name + '.' + book.ext,
+      types: [book.ext === 'csv' ? { description: 'CSV', accept: { 'text/csv': ['.csv'] } }
+        : { description: 'Excel', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }] });
+    await writeFS(h); book.source = { type: 'fs', handle: h };
+    const nm = h.name.replace(/\.[^.]+$/, ''); if (nm) book.name = nm;
+    setDirty(false); updateUI(); toast('Đã lưu ✓');
+  } catch (e) { if (e.name !== 'AbortError') toast('Lỗi lưu: ' + e.message, true); }
+}
+async function save() {
+  if (!book) return;
+  const s = book.source;
+  try {
+    if (s.type === 'fs') { await writeFS(s.handle); }
+    else if (s.type === 'github') { await ghPut(s.path); }
+    else { download(); return; }
+    setDirty(false);
+    toast(s.type === 'github' ? 'Đã lưu lên GitHub ✓' : 'Đã lưu ✓');
+  } catch (e) { toast('Lỗi lưu: ' + e.message, true); }
+}
+
+/* ---------- GitHub ---------- */
+function ghDefaults() {
+  const h = location.hostname; let owner = '', repo = '';
+  if (h.endsWith('.github.io')) { owner = h.split('.')[0]; repo = location.pathname.split('/')[1] || ''; if (/\.html?$/i.test(repo)) repo = ''; }
+  return { owner, repo, branch: 'main', folder: '', token: '' };
+}
+function ghCfg() {
+  try { return { ...ghDefaults(), ...JSON.parse(localStorage.getItem('bm_gh') || '{}') }; }
+  catch { return ghDefaults(); }
+}
+async function gh(path, opt = {}, raw = false) {
+  const c = ghCfg();
+  if (!c.owner || !c.repo) throw new Error('Chưa cài đặt GitHub (owner/repo). Vào Menu → Cài đặt GitHub');
+  let url = `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents` +
+    (path ? '/' + path.split('/').map(encodeURIComponent).join('/') : '');
+  if (opt.method !== 'PUT') url += `?ref=${encodeURIComponent(c.branch)}`;
+  const headers = { Accept: raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json' };
+  if (c.token) headers.Authorization = 'Bearer ' + c.token;
+  if (opt.body) headers['Content-Type'] = 'application/json';
+  return fetch(url, { ...opt, headers, cache: 'no-store' });
+}
+async function ghErr(r) {
+  let m = ''; try { m = (await r.json()).message || ''; } catch {}
+  return new Error(`GitHub ${r.status}${m ? ': ' + m : ''}`);
+}
+function b64(u8) {
+  let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+async function ghPut(path) {
+  const c = ghCfg();
+  if (!c.token) throw new Error('Cần Personal Access Token (Menu → Cài đặt GitHub)');
+  let sha;
+  const r0 = await gh(path);
+  if (r0.ok) sha = (await r0.json()).sha; else if (r0.status !== 404) throw await ghErr(r0);
+  const body = { message: `Update ${path.split('/').pop()} via Book Manager`, content: b64(serialize()), branch: c.branch };
+  if (sha) body.sha = sha;
+  const r = await gh(path, { method: 'PUT', body: JSON.stringify(body) });
+  if (!r.ok) throw await ghErr(r);
+  book.source = { type: 'github', path };
+}
+async function ghSaveTo() {
+  const c = ghCfg();
+  const def = book.source.type === 'github' ? book.source.path : (c.folder ? c.folder.replace(/\/+$/, '') + '/' : '') + book.name + '.' + book.ext;
+  const p = prompt('Đường dẫn file trong repo:', def); if (!p) return;
+  try { await ghPut(p.trim().replace(/^\/+/, '')); setDirty(false); toast('Đã lưu lên GitHub ✓'); }
+  catch (e) { toast('Lỗi: ' + e.message, true); }
+}
+async function ghOpen() {
+  try {
+    const c = ghCfg();
+    const r = await gh(c.folder.replace(/^\/+|\/+$/g, ''));
+    if (!r.ok) throw await ghErr(r);
+    const files = (await r.json()).filter(f => f.type === 'file' && /\.(xlsx|csv)$/i.test(f.name));
+    const d = modal(`<h3>Chọn file từ GitHub</h3><div class="list">${
+      files.length ? files.map(f => `<button data-p="${esc(f.path)}">📄 ${esc(f.name)}</button>`).join('') : '<p class="hint">Không có file .xlsx/.csv trong thư mục này.</p>'
+    }</div><div class="row"><button id="x">Đóng</button></div>`);
+    d.querySelector('#x').onclick = closeModal;
+    d.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      const path = b.dataset.p; closeModal();
+      try {
+        const rr = await gh(path, {}, true);
+        if (!rr.ok) throw await ghErr(rr);
+        await loadBuffer(await rr.arrayBuffer(), path.split('/').pop(), { type: 'github', path });
+      } catch (e) { toast('Lỗi: ' + e.message, true); }
+    });
+  } catch (e) { toast(e.message, true); }
+}
+function ghSettings() {
+  const c = ghCfg();
+  const d = modal(`<h3>Cài đặt GitHub</h3>
+    <label>Owner (user/org)</label><input id="gOwner" value="${esc(c.owner)}" autocapitalize="off">
+    <label>Repo</label><input id="gRepo" value="${esc(c.repo)}" autocapitalize="off" placeholder="Book_manager">
+    <label>Branch</label><input id="gBranch" value="${esc(c.branch)}" autocapitalize="off">
+    <label>Thư mục chứa file (trống = gốc repo)</label><input id="gFolder" value="${esc(c.folder)}" autocapitalize="off">
+    <label>Personal Access Token (cần để lưu; repo public vẫn đọc được không cần)</label>
+    <input id="gToken" type="password" value="${esc(c.token)}" autocomplete="off" placeholder="github_pat_…">
+    <p class="hint">Nên dùng fine-grained token chỉ cấp cho repo này, quyền <b>Contents: Read and write</b>. Token chỉ lưu trong trình duyệt của thiết bị này (localStorage).</p>
+    <div class="row"><button id="gCancel">Huỷ</button><button id="gOk" class="primary">Lưu</button></div>`);
+  d.querySelector('#gCancel').onclick = closeModal;
+  d.querySelector('#gOk').onclick = () => {
+    const v = id => d.querySelector(id).value.trim();
+    localStorage.setItem('bm_gh', JSON.stringify({ owner: v('#gOwner'), repo: v('#gRepo'), branch: v('#gBranch') || 'main',
+      folder: v('#gFolder').replace(/^\/+|\/+$/g, ''), token: d.querySelector('#gToken').value.trim() }));
+    closeModal(); toast('Đã lưu cài đặt GitHub');
+  };
+}
+
+/* ---------- menu ---------- */
+function openMenu() {
+  const hasB = !!book;
+  const d = modal(`<h3>Menu</h3><div class="list">
+    <button data-m="open">📂 Mở file từ máy</button>
+    <button data-m="ghopen">☁️ Mở từ GitHub</button>
+    <button data-m="new">🆕 Tạo file mới</button>
+    ${hasB ? `<button data-m="save">💾 Lưu</button>
+    ${window.showSaveFilePicker ? '<button data-m="saveas">📁 Lưu thành… (chọn nơi lưu)</button>' : ''}
+    <button data-m="dl">⬇️ Tải xuống .${book.ext}</button>
+    <button data-m="ghsave">☁️ Lưu lên GitHub…</button>` : ''}
+    <button data-m="ghcfg">🔑 Cài đặt GitHub</button></div>
+    <div class="row"><button id="x">Đóng</button></div>`);
+  d.querySelector('#x').onclick = closeModal;
+  d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+    closeModal();
+    ({ open: openLocal, ghopen: ghOpen, new: newBook, save, saveas: saveAs, dl: download, ghsave: ghSaveTo, ghcfg: ghSettings })[b.dataset.m]();
+  });
+}
+
+/* ---------- wiring ---------- */
+$('#btnMenu').onclick = openMenu;
+$('#btnSave').onclick = save;
+$('#btnAddSheet').onclick = addSheet;
+$('#btnSheetCfg').onclick = () => openSheetCfg();
+$('#lnkCfg').onclick = e => { e.preventDefault(); openSheetCfg(); };
+$('#btnAdd').onclick = doAdd;
+$('#selSheet').onchange = e => { cur = e.target.value; renderSheet(); };
+$('#q').addEventListener('focus', openSearch);
+$('#q').addEventListener('click', openSearch);
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').firstChild) closeModal(); });
+
+/* thu gọn / mở rộng các mục */
+const ui = { add: true, list: true, exact: false };
+try { Object.assign(ui, JSON.parse(localStorage.getItem('bm_ui') || '{}')); } catch {}
+exact = !!ui.exact;
+function saveUi() { try { localStorage.setItem('bm_ui', JSON.stringify(ui)); } catch {} }
+function applyUi() {
+  ['add', 'list'].forEach(k => {
+    $('#' + k + 'Body').hidden = !ui[k];
+    const b = document.querySelector(`[data-toggle="${k}"]`);
+    b.setAttribute('aria-expanded', String(ui[k])); b.classList.toggle('closed', !ui[k]);
+  });
+}
+document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
+  const k = b.dataset.toggle; ui[k] = !ui[k];
+  saveUi();
+  applyUi();
+});
+applyUi();
+$('#aPrefix').onchange = e => { const sh = curSheet(); if (sh) { sh.prefix = e.target.value.trim(); setDirty(); } };
+$('#aStatus').onchange = e => { lastStatus = e.target.value; };
+['#aStt', '#aItem'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); }));
+document.querySelectorAll('#welcome [data-act]').forEach(b => b.onclick = () =>
+  ({ open: openLocal, ghopen: ghOpen, new: newBook })[b.dataset.act]());
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
+
+/* ---------- PWA ---------- */
+(function setupPWA() {
+  try {
+    const cv = document.createElement('canvas');
+    const icon = sz => {
+      cv.width = cv.height = sz; const x = cv.getContext('2d');
+      x.fillStyle = '#2563eb'; x.fillRect(0, 0, sz, sz);
+      x.fillStyle = '#fff';
+      x.fillRect(sz * .17, sz * .27, sz * .31, sz * .46); x.fillRect(sz * .52, sz * .27, sz * .31, sz * .46);
+      x.fillStyle = '#2563eb';
+      for (let i = 0; i < 3; i++) { x.fillRect(sz * .22, sz * (.36 + i * .1), sz * .21, sz * .03); x.fillRect(sz * .57, sz * (.36 + i * .1), sz * .21, sz * .03); }
+      return cv.toDataURL('image/png');
+    };
+    const ati = document.createElement('link'); ati.rel = 'apple-touch-icon'; ati.href = icon(180); document.head.appendChild(ati);
+    if (/^https?:$/.test(location.protocol)) {
+      const man = { name: 'Book Manager', short_name: 'Books', start_url: location.href.split('#')[0].split('?')[0],
+        display: 'standalone', background_color: '#ffffff', theme_color: '#2563eb',
+        icons: [{ src: icon(192), sizes: '192x192', type: 'image/png' }, { src: icon(512), sizes: '512x512', type: 'image/png' }] };
+      const ml = document.createElement('link'); ml.rel = 'manifest';
+      ml.href = URL.createObjectURL(new Blob([JSON.stringify(man)], { type: 'application/manifest+json' }));
+      document.head.appendChild(ml);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  } catch (e) { /* PWA là phần phụ, bỏ qua lỗi */ }
+})();
+
+function setHeaderH() { document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px'); }
+setHeaderH(); window.addEventListener('resize', setHeaderH);
+
+updateUI();
+setHeaderH();
+</script>
+</body>
+</html>
